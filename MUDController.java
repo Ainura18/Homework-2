@@ -1,91 +1,221 @@
-package com.example.mud.controller;
+import java.util.*;
 
-import java.util.Scanner;
-import com.example.mud.player.Player;
+class Item {
+    private final String name;
+    private final String description;
 
-/**
- * MUDController (Skeleton):
- * A simple controller that reads player input and orchestrates
- * basic commands like look around, move, pick up items,
- * check inventory, show help, etc.
- */
-public class MUDController {
+    public Item(String name, String description) {
+        this.name = name;
+        this.description = description;
+    }
+    public String getName() {
+        return name;
+    }
+
+    public String getDescription() {
+        return description;
+    }
+}
+
+class Room {
+    private final String name;
+    private final String description;
+    private final Map<String, Room> directions;
+    private final List<Item> items;
+
+    public Room(String name, String description) {
+        this.name = name;
+        this.description = description;
+        this.directions = new HashMap<>();
+        this.items = new ArrayList<>();
+    }
+
+    public String describe() {
+        StringBuilder roomDescription = new StringBuilder(name + "\n" + description + "\nItems here: ");
+        if (items.isEmpty()) {
+            roomDescription.append("None");
+        } else {
+            for (Item item : items) {
+                roomDescription.append(item.getName()).append(" ");
+            }
+        }
+        return roomDescription.toString();
+    }
+
+    public void addItem(Item item) {
+        items.add(item);
+    }
+
+    public void removeItem(Item item) {
+        items.remove(item);
+    }
+
+    public Item getItem(String name) {
+        for (Item item : items) {
+            if (item.getName().equalsIgnoreCase(name)) {
+                return item;
+            }
+        }
+        return null;
+    }
+
+    public void connectRoom(String direction, Room room) {
+        directions.put(direction, room);
+    }
+
+    public Room getRoomInDirection(String direction) {
+        return directions.get(direction);
+    }
+}
+
+class Player {
+    private final String name;
+    private Room currentRoom;
+    private final List<Item> inventory;
+
+    public Player(String name) {
+        this.name = name;
+        this.inventory = new ArrayList<>();
+    }
+
+    public String getName() {
+        return name;
+    }
+
+    public Room getCurrentRoom() {
+        return currentRoom;
+    }
+
+    public void setCurrentRoom(Room room) {
+        this.currentRoom = room;
+    }
+
+    public void addToInventory(Item item) {
+        inventory.add(item);
+    }
+
+    public List<Item> getInventory() {
+        return inventory;
+    }
+}
+
+
+public class main {
 
     private final Player player;
     private boolean running;
 
-    /**
-     * Constructs the controller with a reference to the current player.
-     */
     public MUDController(Player player) {
-        // Initialize fields here (if needed)
+        this.player = player;
+        this.running = true;
     }
 
-    /**
-     * Main loop method that repeatedly reads input from the user
-     * and dispatches commands until the game ends.
-     */
     public void runGameLoop() {
-        // TODO: Implement a loop that:
-        // 1) Prints a prompt (e.g., "> ")
-        // 2) Reads user input
-        // 3) Calls handleInput(input)
-        // 4) Terminates when 'running' is set to false
+        Scanner scanner = new Scanner(System.in);
+        while (running) {
+            System.out.print("> ");
+            String input = scanner.nextLine();
+            handleInput(input);
+        }
+        scanner.close();
     }
 
-    /**
-     * Handle a single command input (e.g. 'look', 'move forward', 'pick up sword').
-     */
     public void handleInput(String input) {
-        // TODO:
-        // 1) Parse the input into a command and optionally an argument
-        // 2) Use a switch/case (or if/else) to call the correct method below
-        //    based on the command word
+        String[] parts = input.split(" ", 2);
+        String command = parts[0];
+        String argument = parts.length > 1 ? parts[1] : "";
+
+        switch (command) {
+            case "look":
+                lookAround();
+                break;
+            case "move":
+                move(argument);
+                break;
+            case "pick":
+                pickUp(argument);
+                break;
+            case "inventory":
+                checkInventory();
+                break;
+            case "help":
+                showHelp();
+                break;
+            case "quit":
+            case "exit":
+                running = false;
+                System.out.println("Exiting the game...");
+                break;
+            default:
+                System.out.println("Unknown command");
+                break;
+        }
     }
 
-    /**
-     * Look around the current room: describe it and show items/NPCs.
-     */
     private void lookAround() {
-        // TODO: Print information about the player's current room
+        Room currentRoom = player.getCurrentRoom();
+        System.out.println(currentRoom.describe());
     }
 
-    /**
-     * Move the player in a given direction (forward, back, left, right).
-     */
     private void move(String direction) {
-        // TODO: Attempt to move to the next room in the given direction
-        //       If there's no room in that direction, print an error message
-        //       If successfully moved, describe the new room
+        Room currentRoom = player.getCurrentRoom();
+        Room nextRoom = currentRoom.getRoomInDirection(direction);
+
+        if (nextRoom != null) {
+            player.setCurrentRoom(nextRoom);
+            System.out.println("You moved " + direction);
+            System.out.println(nextRoom.describe());
+        } else {
+            System.out.println("You can't go that way!");
+        }
     }
 
-    /**
-     * Pick up an item (e.g. "pick up sword").
-     */
     private void pickUp(String arg) {
-        // TODO:
-        // 1) Parse out the item name if 'arg' starts with "up "
-        // 2) Check if that item exists in the current room
-        // 3) Remove from room, add to player's inventory
+        Room currentRoom = player.getCurrentRoom();
+        Item item = currentRoom.getItem(arg);
+
+        if (item != null) {
+            player.addToInventory(item);
+            currentRoom.removeItem(item);
+            System.out.println("You pick up the " + arg);
+        } else {
+            System.out.println("No item named " + arg + " here!");
+        }
     }
 
-    /**
-     * Check the player's inventory.
-     */
     private void checkInventory() {
-        // TODO: List the items in the player's inventory
-        //       If no items, indicate that the inventory is empty
+        if (player.getInventory().isEmpty()) {
+            System.out.println("Your inventory is empty.");
+        } else {
+            System.out.println("You are carrying:");
+            for (Item item : player.getInventory()) {
+                System.out.println(item.getName());
+            }
+        }
     }
 
-    /**
-     * Show help commands
-     */
     private void showHelp() {
-        // TODO: Print a list of available commands and brief instructions
+        System.out.println("Available commands:");
+        System.out.println("look - Look around the room");
+        System.out.println("move <forward|back|left|right> - Move in a direction");
+        System.out.println("pick up <itemName> - Pick up an item from the room");
+        System.out.println("inventory - List your inventory");
+        System.out.println("help - Show this help message");
+        System.out.println("quit/exit - Exit the game");
     }
 
-    /**
-     * (Optional) Add any other methods (e.g., attack, open door, talk, etc.)
-     * if you want to extend the game logic further.
-     */
+    public static void main(String[] args) {
+        Player player = new Player("Hero");
+        Room room1 = new Room("Small Stone Chamber", "A small, beautiful.");
+        Room room2 = new Room("Grand Hallway", "A long,beautiful.");
+        Item sword = new Item("sword", "A sharp, beautiful.");
+        room1.addItem(sword);
+
+        room1.connectRoom("forward", room2);
+
+        player.setCurrentRoom(room1);
+
+        MUDController controller = new MUDController(player);
+        controller.runGameLoop();
+    }
 }
